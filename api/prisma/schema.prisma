@@ -1,0 +1,217 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+  DRIVER
+}
+
+enum PaymentMethod {
+  khalti
+  esewa
+  cashondelivery
+}
+
+enum ShippingStatus {
+  ordered
+  shipping
+  delivered
+}
+
+model Product {
+  id            Int             @id @default(autoincrement())
+  name          String?
+  description   String          @db.LongText
+  category      String?
+  brand         Brand?          @relation(fields: [brandId], references: [id])
+  price         Float?
+  discount      Float?
+  afterdiscount Float?
+  isFeatured    Boolean
+  isEcoFriendly Boolean?        @default(true)
+  stock         Int?
+  status        String?
+  viewCount     Int?
+  createdAt     DateTime        @default(now())
+  updateAt      DateTime        @updatedAt
+  images        Image[]         @relation("ProductImages")
+  brandId       Int?
+  CartItem      CartItem[]
+  OrderItems    OrderItems[]
+  seasonId      Int
+  ReturnedOrder ReturnedOrder[]
+  Wishlist      Wishlist[]
+  Season        Season          @relation(fields: [seasonId], references: [id])
+  Review        Review[]
+  User          User?           @relation(fields: [userId], references: [id])
+  userId        Int?
+}
+
+model Image {
+  id        Int     @id @default(autoincrement())
+  url       String?
+  productId Int
+  product   Product @relation("ProductImages", fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Brand {
+  id       Int       @id @default(autoincrement())
+  name     String?
+  products Product[]
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String
+  email        String     @unique
+  role         UserRole   @default(CUSTOMER)
+  address      String
+  phone        String?
+  password     String?
+  image        String
+  token        String?
+  forgetToken  String?
+  validateTill DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  Cart         Cart[]
+  Product      Product[]
+  Order        Order[]
+  Wishlist     Wishlist[]
+  Reviews      Review[]
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  cartItems CartItem[]
+  userId    Int?       @unique
+
+  User User? @relation(fields: [userId], references: [id])
+}
+
+// copy cart item to order and then delete
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int?
+  productId Int?
+  quantity  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product? @relation(fields: [productId], references: [id])
+  cart    Cart?    @relation(fields: [cartId], references: [id])
+}
+
+model Order {
+  id            Int             @id @default(autoincrement())
+  total         Float?          @default(0)
+  customerId    Int
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+  OrderItems    OrderItems[]
+  Purchase      Purchase[]
+  Shipping      Shipping[]
+  voucherId     Int?
+  ReturnedOrder ReturnedOrder[]
+
+  User    User?    @relation(fields: [customerId], references: [id])
+  Voucher Voucher? @relation(fields: [voucherId], references: [id])
+}
+
+model OrderItems {
+  id        Int      @id @default(autoincrement())
+  OrderId   Int
+  productId Int
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Order   Order   @relation(fields: [OrderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Season {
+  id      Int       @id @default(autoincrement())
+  name    String?
+  Product Product[]
+}
+
+model Setting {
+  id            Int @id @default(autoincrement())
+  currentSeason Int @default(0)
+}
+
+model Voucher {
+  id              Int      @id @default(autoincrement())
+  discountPercent Int
+  order           Order[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ReturnedOrder {
+  id        Int      @id @default(autoincrement())
+  productId Int?
+  OrderId   Int?
+  createdAt DateTime @default(now())
+
+  Order   Order?   @relation(fields: [OrderId], references: [id])
+  Product Product? @relation(fields: [productId], references: [id])
+}
+
+model Purchase {
+  id            Int            @id @default(autoincrement())
+  paymentmethod PaymentMethod?
+  token         String
+  amount        Float?
+  OrderId       Int?
+  Shipping      Shipping[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  Order Order? @relation(fields: [OrderId], references: [id])
+}
+
+model Shipping {
+  id         Int            @id @default(autoincrement())
+  status     ShippingStatus @default(ordered)
+  purchaseId Int?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  Order      Order?         @relation(fields: [orderId], references: [id])
+  orderId    Int?
+  Purchase   Purchase?      @relation(fields: [purchaseId], references: [id])
+}
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  userId    Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  User    User?   @relation(fields: [userId], references: [id])
+  Product Product @relation(fields: [productId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  productID Int
+  userId    Int?
+  review    String?
+  createdAt DateTime @default(now())
+
+  User    User?   @relation(fields: [userId], references: [id])
+  Product Product @relation(fields: [productID], references: [id])
+}
